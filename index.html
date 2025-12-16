@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Physics-Based Bézier Rope</title>
+  <style>
+    body {
+      margin: 0;
+      background: #0a0a0a; /* Deep matte black */
+      overflow: hidden;
+      font-family: 'Courier New', Courier, monospace; /* Monospace font looks "technical" */
+      color: #ccc;
+    }
+    canvas {
+      display: block;
+    }
+    
+    /* The "Heads Up Display" Overlay */
+    #hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      padding: 15px;
+      background: rgba(20, 20, 20, 0.85); /* Semi-transparent */
+      border-left: 3px solid #00d2ff; /* Tech cyan accent */
+      border-radius: 4px;
+      pointer-events: none; /* Let clicks pass through */
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    h1 {
+      margin: 0 0 5px 0;
+      font-size: 16px;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    p {
+      margin: 0;
+      font-size: 12px;
+      color: #aaa;
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #00d2ff;
+    }
+  </style>
+</head>
+<body>
+
+<div id="hud">
+  <h1>Cubic Bézier Physics</h1>
+  <p>Input: Mouse Interaction</p>
+  <p>Solver: Spring-Damping (Euler)</p>
+  <div class="status">
+    • k = 0.08<br>
+    • damping = 0.85<br>
+    • 60 FPS Locked
+  </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script type="module" src="main.js"></script>
+
+</body>
+</html>

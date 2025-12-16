@@ -1,0 +1,5 @@
+# OS / editor junk
+.DS_Store
+
+# Node / tooling (future-proof)
+node_modules/
