@@ -191,3 +191,18 @@ This video showcases:
 - Live parameter tuning (stiffness & damping)
 - Stable ~60 FPS performance
 
+## 🌐 Live Demo (Deployed on Vercel)
+
+The project is deployed as a static site on **Vercel** and can be accessed here:
+
+🔗 **Live URL:**  
+https://interactive-bezier-rope-rosy.vercel.app/
+
+### What you can try on the live demo:
+- Move the mouse / touch to interact with the Bézier rope
+- Observe spring–damping behavior of control points (P1, P2)
+- Adjust **stiffness (k)** and **damping** using the sliders
+- Toggle **tangent visualization** and grid
+- Verify smooth real-time rendering at ~60 FPS
+
+
