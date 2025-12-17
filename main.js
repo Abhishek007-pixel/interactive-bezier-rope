@@ -1,7 +1,4 @@
-/* ASSIGNMENT: Interactive Bézier Curve with Physics
-   FILE: main.js
-   STATUS: Optimized for 60 FPS (Mobile/Touch Support Added)
-*/
+
 
 import { bezierPoint, bezierTangent } from "./bezier.js";
 import { SpringPoint } from "./spring.js";

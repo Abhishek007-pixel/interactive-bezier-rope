@@ -1,7 +1,3 @@
-/* FILE: bezier.js
-   METHOD: Explicit Bernstein Polynomials (Direct Equation)
-   PERFORMANCE: High (Minimizes object creation and function calls)
-*/
 
 export function bezierPoint(t, p0, p1, p2, p3) {
   // Pre-calculate powers to save multiplication cycles
@@ -33,12 +29,12 @@ export function bezierTangent(t, p0, p1, p2, p3) {
 
 // //de castelijau bezier.js
 
-// /* FILE: bezier.js
-//    DESCRIPTION: Geometric implementation (De Casteljau's Algorithm).
-//    NOTE: This produces the EXACT same curve as the formula, but uses nested Lerps.
-// */
 
-// // Helper: Linear Interpolation
+//    DESCRIPTION: Geometric implementation (De Casteljau's Algorithm).
+
+// 
+
+// // Linear Interpolation
 // // "Find the point t% of the way from A to B"
 // function lerp(p0, p1, t) {
 //   return {
@@ -47,10 +43,10 @@ export function bezierTangent(t, p0, p1, p2, p3) {
 //   };
 // }
 
-// /**
-//  * Calculates a point on a Cubic Bézier curve using De Casteljau's Algorithm.
-//  * Visualization: It connects dots between moving lines.
-//  */
+// /
+//   Calculates a point on a Cubic Bézier curve using De Casteljau's Algorithm.
+//   It connects dots between moving lines.
+//  
 // export function bezierPoint(t, p0, p1, p2, p3) {
 //   // --- LEVEL 1 (3 Lines) ---
 //   // Interpolate between the 4 control points to get 3 new points
@@ -70,11 +66,11 @@ export function bezierTangent(t, p0, p1, p2, p3) {
 //   return p; 
 // }
 
-// /**
-//  * Calculates the Tangent using Geometry.
-//  * In De Casteljau, the tangent is simply the vector connecting the
-//  * two points from Level 2 (d and e).
-//  */
+// /
+//  Calculates the Tangent using Geometry.
+//   In De Casteljau, the tangent is simply the vector connecting the
+//  two points from Level 2 (d and e).
+//  
 // export function bezierTangent(t, p0, p1, p2, p3) {
 //   // Re-calculate up to Level 2
 //   const a = lerp(p0, p1, t);
