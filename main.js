@@ -1,107 +1,164 @@
 /* ASSIGNMENT: Interactive Bézier Curve with Physics
    FILE: main.js
+   STATUS: Optimized for 60 FPS (Mobile/Touch Support Added)
 */
 
 import { bezierPoint, bezierTangent } from "./bezier.js";
 import { SpringPoint } from "./spring.js";
 
-/* ---------- 1. CANVAS SETUP ---------- */
+/* ---------- 1. SETUP ---------- */
 
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d", { alpha: false }); 
 
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-window.addEventListener("resize", resize);
-resize();
+// UI Elements
+const uiK = document.getElementById("input-k");
+const uiD = document.getElementById("input-d");
+const valK = document.getElementById("val-k");
+const valD = document.getElementById("val-d");
+const uiGrid = document.getElementById("check-grid");
+const uiTangents = document.getElementById("check-tangents");
+const uiFPS = document.getElementById("fps-counter");
 
-/* ---------- 2. CONTROL POINTS ---------- */
+// --- INITIAL RESIZE (Critical Step) ---
+// Set size immediately so Points are created in the right place
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-// Fixed anchors
+/* ---------- 2. PHYSICS OBJECTS ---------- */
+
+// Fixed Anchors
 const p0 = { x: 50, y: canvas.height / 2 };
 const p3 = { x: canvas.width - 50, y: canvas.height / 2 };
 
-// Spring-controlled points
+// Dynamic Points (Physics)
 const p1 = new SpringPoint(canvas.width * 0.33, canvas.height / 2);
 const p2 = new SpringPoint(canvas.width * 0.66, canvas.height / 2);
 
-// Resting configuration
-const OFFSET_X = 100;
+const OFFSET_X = 120;
 
-/* ---------- 3. INPUT HANDLING ---------- */
+/* ---------- 3. RESIZE HANDLER ---------- */
+// This runs ONLY when the window is resized by the user
+function handleResize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  // Now it is safe to access p1/p2 because they definitely exist
+  p1.target.x = canvas.width * 0.33;
+  p1.target.y = canvas.height / 2;
+  p2.target.x = canvas.width * 0.66;
+  p2.target.y = canvas.height / 2;
+}
+window.addEventListener("resize", handleResize);
 
+/* ---------- 4. INPUT HANDLING ---------- */
+
+// A. Mouse Interaction
 canvas.addEventListener("mousemove", (e) => {
   const rect = canvas.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
 
-  // X Offsets (Keep these the same)
   p1.target.x = mouseX - OFFSET_X;
   p2.target.x = mouseX + OFFSET_X;
-
-  // --- NEW Y LOGIC ---
-  // In Canvas, Y=0 is the top. 
-  // Subtracting moves UP. Adding moves DOWN.
-  
-  p1.target.y = mouseY - 150; // Force P1 to float 150px ABOVE mouse
-  p2.target.y = mouseY + 150; // Force P2 to hang 150px BELOW mouse
+  p1.target.y = mouseY; 
+  p2.target.y = mouseY;
 });
 
-// Reset to stable resting state
-canvas.addEventListener("mouseleave", () => {
+// B. Touch Interaction (Mobile/Tablet Support)
+function handleTouch(e) {
+  e.preventDefault(); 
+  const rect = canvas.getBoundingClientRect();
+  const touch = e.touches[0];
+  const touchX = touch.clientX - rect.left;
+  const touchY = touch.clientY - rect.top;
+
+  p1.target.x = touchX - OFFSET_X;
+  p2.target.x = touchX + OFFSET_X;
+  p1.target.y = touchY;
+  p2.target.y = touchY;
+}
+
+canvas.addEventListener("touchstart", handleTouch, { passive: false });
+canvas.addEventListener("touchmove", handleTouch, { passive: false });
+
+canvas.addEventListener("touchend", () => {
   p1.target.x = canvas.width * 0.33;
   p1.target.y = canvas.height / 2;
-
   p2.target.x = canvas.width * 0.66;
   p2.target.y = canvas.height / 2;
 });
 
-/* ---------- 4. RENDERING ---------- */
+canvas.addEventListener("mouseleave", () => {
+  p1.target.x = canvas.width * 0.33;
+  p1.target.y = canvas.height / 2;
+  p2.target.x = canvas.width * 0.66;
+  p2.target.y = canvas.height / 2;
+});
 
-// NEW: Draws a background grid for "Technical" feel
+// C. UI Controls
+uiK.addEventListener("input", (e) => {
+  const val = parseFloat(e.target.value);
+  p1.k = val;
+  p2.k = val;
+  valK.textContent = val.toFixed(2);
+});
+
+uiD.addEventListener("input", (e) => {
+  const val = parseFloat(e.target.value);
+  p1.damping = val;
+  p2.damping = val;
+  valD.textContent = val.toFixed(2);
+});
+
+/* ---------- 5. RENDERING ---------- */
+
 function drawGrid() {
-  ctx.strokeStyle = "#222";
-  ctx.lineWidth = 1;
-  const step = 50;
+  if (!uiGrid.checked) return;
 
+  const step = 60;
+  ctx.strokeStyle = "rgba(40, 40, 50, 0.5)"; 
+  ctx.lineWidth = 1;
   ctx.beginPath();
+  
   for (let x = 0; x < canvas.width; x += step) {
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, canvas.height);
+    ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
   }
   for (let y = 0; y < canvas.height; y += step) {
-    ctx.moveTo(0, y);
-    ctx.lineTo(canvas.width, y);
+    ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
   }
   ctx.stroke();
 }
 
 function drawBezierCurve() {
-  ctx.strokeStyle = "white";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-
-  // Sampling 200 points for high precision smoothing
-  for (let i = 0; i <= 200; i++) {
-    const t = i / 200;
+  const path = new Path2D();
+  
+  for (let i = 0; i <= 100; i++) {
+    const t = i / 100;
     const pt = bezierPoint(t, p0, p1.position, p2.position, p3);
-    if (i === 0) ctx.moveTo(pt.x, pt.y);
-    else ctx.lineTo(pt.x, pt.y);
+    if (i === 0) path.moveTo(pt.x, pt.y);
+    else path.lineTo(pt.x, pt.y);
   }
 
-  ctx.stroke();
+  ctx.strokeStyle = "rgba(0, 212, 255, 0.2)";
+  ctx.lineWidth = 8;
+  ctx.lineCap = "round";
+  ctx.stroke(path);
+
+  ctx.strokeStyle = "#00d4ff"; 
+  ctx.lineWidth = 3;
+  ctx.stroke(path);
 }
 
 function drawTangents() {
-  // 1. INCREASE VISIBILITY: Solid Red (No transparency) + Thicker Line
-  ctx.strokeStyle = "#ff0044"; 
-  ctx.lineWidth = 2; // Was 1, now 2 (Thicker)
+  if (!uiTangents.checked) return;
 
-  for (let i = 0; i <= 200; i += 10) {
-    const t = i / 200;
-
+  ctx.strokeStyle = "#67f105ff";
+  ctx.lineWidth = 3;           
+  ctx.beginPath();
+  
+  for (let i = 0; i <= 100; i += 10) { 
+    const t = i / 100;
     const origin = bezierPoint(t, p0, p1.position, p2.position, p3);
     const tangent = bezierTangent(t, p0, p1.position, p2.position, p3);
 
@@ -110,71 +167,79 @@ function drawTangents() {
 
     const nx = tangent.x / len;
     const ny = tangent.y / len;
+    const scale = 50; 
 
-    // 2. INCREASE LENGTH: Make lines longer so they are easier to spot
-    const scale = 50; // Was 25, now 50 (Longer)
-
-    ctx.beginPath();
     ctx.moveTo(origin.x, origin.y);
     ctx.lineTo(origin.x + nx * scale, origin.y + ny * scale);
-    ctx.stroke();
+  }
+  ctx.stroke();
 
-    // 3. TANGENT DOT: Slightly larger for better contrast
-    ctx.fillStyle = "#ff0044";
+  ctx.fillStyle = "#0fe14eff";
+  for (let i = 0; i <= 100; i += 10) {
+    const t = i / 100;
+    const origin = bezierPoint(t, p0, p1.position, p2.position, p3);
     ctx.beginPath();
-    ctx.arc(origin.x, origin.y, 3, 0, Math.PI * 2); // Radius 3 (was 2)
+    ctx.arc(origin.x, origin.y, 3, 0, Math.PI * 2);
     ctx.fill();
   }
 }
+
 function drawControlPoints() {
-  function drawPoint(x, y, color, label) {
-    // Glow effect
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = color;
-    
+  function drawDot(x, y, color, label, isFixed) {
     ctx.fillStyle = color;
+    ctx.globalAlpha = 0.2;
     ctx.beginPath();
-    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.arc(x, y, isFixed ? 12 : 16, 0, Math.PI * 2);
     ctx.fill();
 
-    // Reset shadow for text
-    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1.0;
+    ctx.beginPath();
+    ctx.arc(x, y, isFixed ? 6 : 8, 0, Math.PI * 2);
+    ctx.fill();
 
-    ctx.fillStyle = "#888"; // Gray text
-    ctx.font = "12px monospace";
-    ctx.fillText(label, x + 12, y - 8);
+    ctx.fillStyle = "white";
+    ctx.font = "bold 11px monospace";
+    ctx.fillText(label, x - 5, y - 18);
   }
 
-  drawPoint(p0.x, p0.y, "#00d2ff", "P0"); // Cyan
-  drawPoint(p3.x, p3.y, "#00d2ff", "P3");
-  drawPoint(p1.position.x, p1.position.y, "#ffeb3b", "P1"); // Yellow
-  drawPoint(p2.position.x, p2.position.y, "#ffeb3b", "P2");
+  drawDot(p0.x, p0.y, "#00d4ff", "P0", true);
+  drawDot(p3.x, p3.y, "#00d4ff", "P3", true);
+  drawDot(p1.position.x, p1.position.y, "#ffcc00", "P1", false);
+  drawDot(p2.position.x, p2.position.y, "#ffcc00", "P2", false);
 }
 
-/* ---------- 5. MAIN LOOP ---------- */
+/* ---------- 6. LOOP ---------- */
 
-function loop() {
-  // Clear background
-  ctx.fillStyle = "#0a0a0a";
+let lastTime = 0;
+let frameCount = 0;
+
+function loop(timestamp) {
+  if (timestamp - lastTime >= 1000) {
+    uiFPS.textContent = frameCount + " FPS";
+    frameCount = 0;
+    lastTime = timestamp;
+  }
+  frameCount++;
+  
+  const bg = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width);
+  bg.addColorStop(0, "#141420");
+  bg.addColorStop(1, "#0a0a0f");
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Draw Grid first (behind everything)
-  drawGrid();
-
-  // Physics update
   p1.update();
   p2.update();
 
-  // Responsive Anchors
-  p0.x = 50; p0.y = canvas.height / 2;
-  p3.x = canvas.width - 50; p3.y = canvas.height / 2;
+  p0.y = canvas.height / 2;
+  p3.x = canvas.width - 50; 
+  p3.y = canvas.height / 2;
 
-  // Render Scene
-  drawTangents(); // Draw tangents behind curve
+  drawGrid();
+  drawTangents();
   drawBezierCurve();
   drawControlPoints();
 
   requestAnimationFrame(loop);
 }
 
-loop();
+requestAnimationFrame(loop);

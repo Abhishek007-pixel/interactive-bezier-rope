@@ -3,66 +3,206 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Physics-Based Bézier Rope</title>
+  <title>Cubic Bézier Physics Engine</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
   <style>
-    body {
-      margin: 0;
-      background: #0a0a0a; /* Deep matte black */
-      overflow: hidden;
-      font-family: 'Courier New', Courier, monospace; /* Monospace font looks "technical" */
-      color: #ccc;
-    }
-    canvas {
-      display: block;
+    /* --- CSS VARIABLES --- */
+    :root {
+      --bg-color: #0a0a0f;
+      --panel-bg: rgba(10, 10, 15, 0.90); /* More opaque */
+      --cyan: #00d4ff;
+      --pink: #ff0055; /* Brighter Pink/Red */
+      --yellow: #ffcc00;
+      --green: #67f105ff;
+      --border: rgba(255, 255, 255, 0.15);
     }
     
-    /* The "Heads Up Display" Overlay */
-    #hud {
+
+    body {
+      margin: 0;
+      background: var(--bg-color);
+      overflow: hidden;
+      font-family: 'JetBrains Mono', monospace;
+      color: white;
+    }
+
+    canvas {
+      display: block;
+      cursor: crosshair;
+    }
+
+    #ui-layer {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+    }
+
+    /* --- PANELS --- */
+    .panel {
+      pointer-events: auto;
+      background: var(--panel-bg);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px; /* Smaller padding */
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      transition: height 0.3s ease, opacity 0.3s ease;
+      overflow: hidden;
+    }
+
+    /* --- CONTROLS BOX --- */
+    #controls {
       position: absolute;
       top: 20px;
       left: 20px;
-      padding: 15px;
-      background: rgba(20, 20, 20, 0.85); /* Semi-transparent */
-      border-left: 3px solid #00d2ff; /* Tech cyan accent */
-      border-radius: 4px;
-      pointer-events: none; /* Let clicks pass through */
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      width: 220px; /* Much smaller width */
+      border-left: 3px solid var(--cyan);
     }
+
+    #controls.minimized {
+      height: 24px; /* Only show header */
+      padding-bottom: 0;
+    }
+
+    /* --- HEADER & TOGGLE --- */
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
     h1 {
-      margin: 0 0 5px 0;
-      font-size: 16px;
-      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px; /* Smaller font */
       text-transform: uppercase;
       letter-spacing: 1px;
-    }
-    p {
       margin: 0;
-      font-size: 12px;
-      color: #aaa;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    .status {
-      margin-top: 10px;
-      font-size: 11px;
-      color: #00d2ff;
+
+    h1::before {
+      content: ''; display: block; width: 6px; height: 6px;
+      background: var(--cyan); border-radius: 50%;
+      box-shadow: 0 0 8px var(--cyan);
     }
+
+    /* The Minimize Button */
+    .toggle-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: #888;
+      font-size: 10px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .toggle-btn:hover { color: white; border-color: white; }
+
+    /* --- CONTENT --- */
+    .data-row {
+      display: flex; justify-content: space-between;
+      font-size: 10px; margin-bottom: 4px; color: #aaa;
+    }
+    
+    .highlight { color: var(--cyan); font-weight: bold; }
+    .pink { color: var(--pink); font-weight: bold; }
+    .yellow { color: var(--yellow); }
+
+    .slider-group {
+      margin-top: 12px;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
+
+    label {
+      font-size: 10px; display: block; margin-bottom: 2px; color: #888;
+    }
+
+    input[type=range] {
+      width: 100%; accent-color: var(--pink); margin-bottom: 10px; cursor: pointer; height: 4px;
+    }
+
+    /* --- OTHER OVERLAYS --- */
+    #fps-counter {
+      position: absolute; top: 20px; right: 20px;
+      color: #00ffaa; font-size: 11px;
+      border: 1px solid rgba(0, 255, 170, 0.3);
+      padding: 4px 8px; border-radius: 4px;
+      background: rgba(0,0,0,0.6);
+    }
+
+    #math-box {
+      position: absolute; bottom: 20px; right: 20px;
+      text-align: right; border-right: 3px solid var(--pink);
+    }
+
+    #legend {
+      position: absolute; bottom: 20px; left: 20px;
+      display: flex; gap: 12px; font-size: 10px; border: none; padding: 8px 12px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; color: #aaa; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; }
   </style>
 </head>
 <body>
 
-<div id="hud">
-  <h1>Cubic Bézier Physics</h1>
-  <p>Input: Mouse Interaction</p>
-  <p>Solver: Spring-Damping (Euler)</p>
-  <div class="status">
-    • k = 0.08<br>
-    • damping = 0.85<br>
-    • 60 FPS Locked
+  <canvas id="canvas"></canvas>
+
+  <div id="ui-layer">
+    
+    <div id="controls" class="panel">
+      <div class="header-row">
+        <h1>Physics Engine</h1>
+        <button class="toggle-btn" onclick="togglePanel()">_</button>
+      </div>
+      
+      <div class="data-row"><span>Solver</span> <span class="highlight">Euler</span></div>
+      <div class="data-row"><span>State</span> <span style="color: #00ffaa">RUNNING</span></div>
+
+      <div class="slider-group">
+        <label>STIFFNESS (k): <span id="val-k" class="pink">0.05</span></label>
+        <input type="range" id="input-k" min="0.01" max="0.2" step="0.01" value="0.05">
+
+        <label>DAMPING: <span id="val-d" class="pink">0.60</span></label>
+        <input type="range" id="input-d" min="0.50" max="0.99" step="0.01" value="0.60">
+        
+        <label style="margin-top: 5px; display: flex; align-items: center; gap: 5px;">
+          <input type="checkbox" id="check-grid" checked> Show Grid
+        </label>
+        <label style="display: flex; align-items: center; gap: 5px;">
+          <input type="checkbox" id="check-tangents" checked> Show Tangents
+        </label>
+      </div>
+    </div>
+
+    <div id="fps-counter">60 FPS</div>
+
+    <div id="legend" class="panel">
+      <div class="legend-item"><div class="dot" style="background:var(--cyan)"></div> Anchor</div>
+      <div class="legend-item"><div class="dot" style="background:var(--yellow)"></div> Dynamic</div>
+      <div class="legend-item"><div class="dot" style="background:var(--green)"></div> Tangent</div>
+    </div>
+
+    <div id="math-box" class="panel">
+      <div style="font-size: 10px; color: #666; margin-bottom: 2px;">CUBIC BÉZIER FORMULA</div>
+      <div style="color: white; font-size: 11px;">B(t) = (1-t)³P₀ + ... + t³P₃</div>
+      <div style="color: var(--pink); font-size: 11px; margin-top: 2px;">B'(t) = 3(1-t)²(P₁-P₀) + ...</div>
+    </div>
   </div>
-</div>
 
-<canvas id="canvas"></canvas>
-
-<script type="module" src="main.js"></script>
-
+  <script type="module" src="main.js"></script>
+  
+  <script>
+    function togglePanel() {
+      const panel = document.getElementById('controls');
+      panel.classList.toggle('minimized');
+    }
+  </script>
 </body>
 </html>

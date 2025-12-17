@@ -7,8 +7,8 @@ export class SpringPoint {
     this.velocity = { x: 0, y: 0 };
     this.target = { x, y };
 
-    this.k = 0.08;        // stiffness
-    this.damping = 0.85; // damping factor
+    this.k = 0.05;        // stiffness
+    this.damping = 0.6; // damping factor
   }
 
   update() {
